@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        #c {
+            width: 100px;
+            height: 100px;
+            background-color: red;
+            /* display: none; */
+            /* visibility: hidden; */
+        }
+
+        #d {
+            width: 50px;
+            height: 50px;
+            background-color: blue;
+            /* display: none; */
+            visibility: hidden;
+        }
+
+        #e {
+            width: 50px;
+            height: 50px;
+            background-color: violet;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="a"><button id="b">被点击了</button></div>
+
+    <div id="c">
+        <div id="d"></div>
+        <div id="e"></div>
+    </div>
+    <script>
+        window.addEventListener('click', (e) => {
+            console.log(e.currentTarget);
+        }, false)
+        document.addEventListener('click', (e) => {
+            console.log(e.currentTarget);
+        }, false)
+        a.addEventListener('click', e => {
+            console.log(e.currentTarget);
+        }, false)
+        b.addEventListener('click', e => {
+            console.log(e.currentTarget);
+        }, false)
+    </script>
+</body>
+
+</html>

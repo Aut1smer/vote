@@ -1,0 +1,11 @@
+请打开控制台
+
+<script>
+    async function main() {
+        for (; ;) {
+            let data = await fetch('/boardcast').then((res) => res.text())
+            console.log(data);
+        }
+    }
+    main()
+</script>
