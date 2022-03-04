@@ -6,13 +6,13 @@ import axios from "axios";
 import { useCallback } from "react"
 // import { produce } from "immer"
 import { useImmer } from "use-immer"; //直接修改草稿
-import { useInput, useBooleanInput, useUser } from "../components/hooks";
+import { useInput, useBooleanInput, forceLogin } from "../components/hooks";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import RequireLogin from "./RequireLogin";
+
 
 
 //限制传播  vx的分享功能，分享到一个群后，就不能分享到别的群了；走session
-export default function CreateVote(props) {
+function CreateVote({ useInfo }) {
     const title = useInput('')
     const description = useInput('')
     const date = new Date()
@@ -62,14 +62,14 @@ export default function CreateVote(props) {
         }
     }
 
-    // 判断用户登录态
-    const { data: userData, loading: userLoading, error: userError } = useUser()
+    // // 判断用户登录态
+    // const { data: userData, loading: userLoading, error: userError } = useUser()
     // if (userLoading) {
     //     return 'Loading..'
     // }
-    if (userError) {
-        return <RequireLogin />
-    }
+    // if (userError) {
+    //     return <RequireLogin />
+    // }
     return (
         <div>
             <div>
@@ -100,3 +100,8 @@ export default function CreateVote(props) {
         </div>
     )
 }
+
+
+
+
+export default forceLogin(CreateVote)

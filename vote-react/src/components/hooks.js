@@ -80,7 +80,7 @@ export function useUser() {
 
 
 
-// 强制登录的高阶组件，用它包裹的组件必须登录才能显示
+// 强制登录的高阶组件，用它包裹的组件必须登录才能显示 用于子组件检查用户登录态
 export function forceLogin(Comp) {
     function ForceLoginComp(props) {
         const userInfo = useUser()

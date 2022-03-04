@@ -1,6 +1,7 @@
 
 // import axios from "../api" //跨域请求后端API方案1
 import axios from "axios"
+import { useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useInput, useUser } from '../components/hooks'
 
@@ -13,7 +14,15 @@ export default function Login(props) {
     const userName = useInput()
     const password = useInput()
     const navigate = useNavigate()
-    const userInfo = useUser() // /account/current-user
+    const userInfo = useUser() // /account/current-user -> useAxios {data, loading, error, update}
+
+    //已在登录态，返回前页
+    useEffect(() => {
+        if (userInfo.data) {
+            navigate(-1)
+        }
+    })
+
     // 发请求 axios
     async function userLogin() {
         const info = {

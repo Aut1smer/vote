@@ -4,8 +4,7 @@
 import { useParams } from "react-router-dom"
 import axios from "axios"
 import { useEffect, useState, useMemo } from "react"
-import { useAxios, useUser } from "../components/hooks"
-import RequireLogin from "./RequireLogin"
+import { useAxios, forceLogin } from "../components/hooks"
 import _ from 'lodash'
 import './ViewVote.css'
 
@@ -19,10 +18,10 @@ import './ViewVote.css'
  *
  */
 
-export default function ViewVote(props) {
+function ViewVote({ userInfo: userData }) { //高阶传来的userInfo
     const { voteId } = useParams()
     const [userVotes, setUserVotes] = useState() //记录从ws上获取的最新信息
-    const { data: userData, loading: userLoading, error: userError } = useUser() //拿到登录用户个人信息
+    // const { data: userData, loading: userLoading, error: userError } = useUser() //拿到登录用户个人信息
     const { data, loading, error } = useAxios({ //自封装useAxios，发送请求解得票版数据，会被ws来的新数据给冲下去
         url: '/vote/' + voteId,
         method: 'GET'
@@ -65,14 +64,15 @@ export default function ViewVote(props) {
     console.log('groupedVotes分组后的投票数据', groupedVotes);
     console.log('totalUsers去重后的总投票人数:', totalUsers);
 
-    if (loading || userLoading) return 'Loading...'
+    //票版请求未完成
+    if (loading) return 'Loading...'
     if (error instanceof Error) {
         console.log('viewvote组件发生axios请求错误：', error);
         throw error
     }
-    if (userError) { //需要登录
-        return <RequireLogin />
-    }
+    // if (userError) { //需要登录
+    //     return <RequireLogin />
+    // }
     return (
         <div>
             <h1>查看投票</h1>
@@ -109,3 +109,5 @@ export default function ViewVote(props) {
         </div>
     )
 }
+
+export default forceLogin(ViewVote)
