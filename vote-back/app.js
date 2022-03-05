@@ -26,7 +26,7 @@ const accountRouter = require('./account')
 
 //cookieParser 对cookie签名加密
 const cookieParser = require('cookie-parser')
-
+const cookieSecret = 'cookie sign secret' //密钥
 //数据库
 const db = require('./db')
 
@@ -36,7 +36,8 @@ const http = require('http')
 // const { cookie } = require('express/lib/response')
 const server = http.createServer() //创建http服务器，把应用传入请求事件；为ws服务器提供基本层
 const wsServer = new WebSocketServer({ server }) //ws接管了server的upgrade事件
-
+const querystring = require('querystring')
+const _ = require('lodash')
 // 投票id -> 响应该投票的存活的ws们
 const voteWsMap = {} // 2:[ws, ws, ws] 二号投票有三个连接需要更新
 
@@ -45,6 +46,18 @@ console.log('voteWsMap', voteWsMap);
 wsServer.on('connection', (connectSocket, req) => { //连接建立
     // 请求ws://localhost:8081/realtime-voteinfo/7  应回复7号票版的新信息
     console.log('有人连入了websocket,请求地址为 ', req.url);
+    // console.log('当前ws连接的登录用户为 ', req.headers.cookie); // ws服务器不是express的一部分，所以需要手动解析
+    // https://www.npmjs.com/package/cookie-parser cookieParser主动解析加密cookie
+    const parsedCookie = cookieParser.signedCookies(querystring.parse(req.headers.cookie, '; '), cookieSecret) //{loginUser: userId}
+    const userId = parsedCookie.loginUser
+    if (!userId) {
+        console.log('非法cookie登录,某ws连接即将断开');
+        connectSocket.close()
+        return
+    }
+
+    // const user = db.prepare('SELECT * FROM users WHERE userId = ?').get(userId)
+    connectSocket.userId = userId //此处挂载连入的用户信息
     // req.url === '/realtime-voteinfo/7'
     if (req.url.match(/^\/realtime-voteinfo\/\d+$/)) { //匹配该形式的地址，允许连接票版
         const voteId = req.url.match(/\d+$/)[0] // ['7', index, input...]
@@ -78,7 +91,7 @@ app.use(cors({
     maxAge: 86400, //不发送预检请求过期时间
     // optionsSuccessStatus: 200,
 })) //默认选项为允许跨域，还可以传一个配置项进去
-app.use(cookieParser('cookie sign secret')) //cookie签名的密码
+app.use(cookieParser(cookieSecret)) //cookie签名的密码
 app.use(express.static(__dirname + '/static')) //静态文件中间件
 app.use('/uploads', express.static(__dirname + '/uploads')) //用于响应用户上传的头像请求
 app.use(express.json()) //解析json请求体的中间件， axios的json会序列化后被改中间件解掉
@@ -121,6 +134,7 @@ app.use('/account', accountRouter) //请求以 /account/xxx 打头的地址，�
 
 
 // RESTful 票版表路由
+// GET / vote 拿到已登录用户票版
 // POST / vote 创建投票，信息在请求体
 // GET / vote / 8 获取投票题目的信息
 // DELETE / vote / 8 删除8号投票
@@ -128,7 +142,24 @@ app.use('/account', accountRouter) //请求以 /account/xxx 打头的地址，�
 
 
 
-//已登录用户创建投票票版 更新votes和options数据库 RESTful
+
+//已登录用户访问MyVote 返回该用户创建的票版数据
+app.get('/vote', (req, res, next) => {
+    if (!req.isLogin) {
+        res.status(403).json({
+            code: -1,
+            msg: 'not login'
+        })
+        return
+    }
+    const hisVotes = db.prepare('SELECT * FROM votes WHERE userId = ?').all(req.loginUser.userId)
+    res.status(200).json({
+        code: 0,
+        result: hisVotes
+    })
+})
+
+//已登录用户创建投票票版 更新votes和options数据库 
 app.post('/vote', (req, res, next) => {
     const vote = req.body
     console.log('前端来创建投票的信息:', vote);
@@ -158,7 +189,16 @@ app.post('/vote', (req, res, next) => {
     }
 })
 
+
+//拿到当前票版voteId的具体信息，如果是匿名投票则只发与登录态用户有关的信息
 app.get('/vote/:voteId', (req, res, next) => {
+    if (!req.isLogin) {
+        res.status(401).json({
+            code: -1,
+            msg: 'not login'
+        })
+        return
+    }
     //返回数据库中的voteId对应的所有数据
     let { voteId } = req.params // {xx:xx}
     const voteSetting = db.prepare('SELECT * FROM votes WHERE voteId = ?').get(voteId)
@@ -182,14 +222,48 @@ app.get('/vote/:voteId', (req, res, next) => {
         .all(voteId)
     voteSetting.userVotes = userVotes
 
+    //如果是匿名投票，应该把非用户本人的 userId avatar 删掉，除非他是创建者
+    const userId = req?.loginUser?.userId
+    if (voteSetting.anonymous && userId != voteSetting.userId) {
+        userVotes.forEach(it => {
+            if (it.userId !== userId) {
+                it.userId = null;
+                it.avatar = null;
+                it.name = null;
+            }
+        })
+    }
     res.status(200).json({
         code: 0,
         result: voteSetting
     })
 })
 
+// 在有所有权的情况下，删除某投票
 app.delete('/vote/:voteId', (req, res, next) => {
-
+    if (!req.isLogin) {
+        res.status(401).json({
+            code: -1,
+            msg: 'not login'
+        })
+        return
+    }
+    const { voteId } = req.params
+    const userId = req.loginUser.userId
+    const vote = db.prepare('SELECT * FROM votes WHERE voteId = ? AND userId = ?').get(voteId, userId)
+    if (!vote) {
+        res.status(404).json({
+            code: -1,
+            msg: ' vote resource belongs to you is not found, voteId: ' + voteId
+        })
+        return
+    }
+    //只删除了票版，*正常*不删。其他的查不出来可以放着了
+    db.prepare('DELETE FROM votes WHERE voteId = ?').run(voteId)
+    res.status(200).json({
+        code: 0,
+        msg: 'delete vote ' + voteId + ' succeeded'
+    })
 })
 // app.put('/vote/:voteId', (req, res, next) => {
 //     //可以修改的投票会很奇怪
@@ -197,9 +271,20 @@ app.delete('/vote/:voteId', (req, res, next) => {
 
 
 
-//对 已登录用户 正在访问的 票版 的 选项 进行 选中/取消选中
-app.post('/vote/:voteId/option/:optionId', (req, res, next) => {
-    const { voteId, optionId } = req.params
+
+// POST /vote/8   {optionIds:[21,43,5]}
+//对 已登录用户 正在访问的 票版 的 选项(们) 进行 (匿名)投票
+//即切换当前登录用户对voteId的optionId的投票情况；如果匿名，不允许切换
+app.post('/vote/:voteId', (req, res, next) => {
+    const { voteId } = req.params
+    const { optionIds } = req.body
+    if (optionIds.length === 0) { //post请求体没有 已选择的数据
+        res.status(400).json({
+            code: -1,
+            msg: 'bad request, you must vote a option!'
+        })
+    }
+    const optionId = optionIds[0] //单选只有一个id，就算发来多个也只用一个
     // console.log(req.params);
     const userId = req.loginUser?.userId
     // console.log(req.loginUser);
@@ -210,7 +295,7 @@ app.post('/vote/:voteId/option/:optionId', (req, res, next) => {
         })
         return
     }
-    const vote = db.prepare('select * from votes where voteId = ?').get(voteId)
+    const vote = db.prepare('select * from votes where voteId = ?').get(voteId) //当前票版
     if (!vote) { //票版不存在
         res.status(404).json({
             code: -1,
@@ -229,37 +314,77 @@ app.post('/vote/:voteId/option/:optionId', (req, res, next) => {
 
     const multi = vote.multiple == 1 ? true : false
     if (multi) { //多选：用户没投过则投上，用户投过取消
-        const voted = db.prepare('select * from voteOptions where userId = ? and voteId = ? and optionId = ?')
-            .get(userId, voteId, optionId)
-        if (voted) { //投过，删除该行
-            db.prepare('delete from voteOptions where voteOptionId = ?').run(voted.voteOptionId)
-        } else { //没投过，增加
-            db.prepare('insert into voteOptions (userId, voteId, optionId) values(?,?,?)')
-                .run(userId, voteId, optionId)
+        if (vote.anonymous) { //匿名多选如果用户投过，不允许再投了
+            let userHasVoteOne = db.prepare('SELECT * FROM voteOptions WHERE userId=? AND voteId=?').get(userId, voteId)
+            if (userHasVoteOne) {
+                res.status(403).json({
+                    code: -1,
+                    msg: '匿名多选不允许重新投票'
+                })
+                return
+            } else { //匿名多选用户没投过，一次性投完
+                let insertVoteStmt = db.prepare('INSERT INTO voteOptions (userId, voteId, optionId) VALUES(?,?,?)')
+                optionIds.forEach(optionId => {
+                    insertVoteStmt.run(userId, voteId, optionId)
+                })
+                // res.status(200).json({
+                //     code: 0,
+                //     msg: '选好了！'
+                // })
+            }
+        } else {
+            //非匿名投票， 允许单点即改
+            const voted = db.prepare('select * from voteOptions where userId = ? and voteId = ? and optionId = ?')
+                .get(userId, voteId, optionId)
+            if (voted) { //投过，删除该行
+                db.prepare('delete from voteOptions where voteOptionId = ?').run(voted.voteOptionId)
+            } else { //没投过，增加
+                db.prepare('insert into voteOptions (userId, voteId, optionId) values(?,?,?)')
+                    .run(userId, voteId, optionId)
+            }
+            // res.status(200).json({
+            //     code: 0,
+            //     msg: '选好了！'
+            // })
         }
+
     } else { //单选： 找出用户投过的票，不等则取消并投上，等则不干嘛
         const voted = db.prepare('select * from voteOptions where userId = ? and voteId = ?').get(userId, voteId)
 
         if (voted) { //投过就更新 用户 在 票版 的选项
-            if (voted.optionId === optionId) { //单选两次相同选项
-                // 方案一：投过就是投过，不允许取消
-                res.status(200).json({
-                    code: 0,
-                    result: {
-                        msg: 'you have voted this option'
-                    }
+            if (vote.anonymous) {//匿名单选投过，不允许重投
+                res.status(403).json({
+                    code: -1,
+                    msg: '匿名投票无法修改已投结果！'
                 })
                 return
-                // 方案二：允许取消
-                // db.prepare('delete from voteOptions where voteOptionId = ?').run(voted.voteOptionId)
-            } else { //更改用户选项
-                db.prepare('update voteOptions set optionId = ? where voteOptionId = ?').run(optionId, voted.voteOptionId)
+            } else {
+                //非匿名投过
+                if (voted.optionId === optionId) { //单选两次相同选项
+                    // 方案一：投过就是投过，不允许取消
+                    res.status(200).json({
+                        code: 0,
+                        result: {
+                            msg: 'you have voted this option'
+                        }
+                    })
+                    return
+                    // 方案二：允许取消
+                    // db.prepare('delete from voteOptions where voteOptionId = ?').run(voted.voteOptionId)
+                } else { //更改用户选项
+                    db.prepare('update voteOptions set optionId = ? where voteOptionId = ?').run(optionId, voted.voteOptionId)
+                }
             }
-        } else { //没投过，新增
+        } else { //匿名非匿名没投过，新增
             db.prepare('insert into voteOptions (userId, voteId, optionId) values(?,?,?)')
                 .run(userId, voteId, optionId)
         }
     }
+    //结束axios修改投票的请求
+    res.status(200).json({
+        code: 0,
+        msg: '选好了！'
+    })
     //把最新的当前投票数据拿到，发给等待接收新数据的ws们
     if (voteWsMap[voteId]) {
         //联表查询出 某票版下  的所有 选项ID、用户信息， 由前端自行过滤内容
@@ -268,25 +393,37 @@ app.post('/vote/:voteId/option/:optionId', (req, res, next) => {
                                     ON users.userId = voteOptions.userId 
                                     WHERE voteId=?`).all(voteId)
 
+
         voteWsMap[voteId].forEach(ws => {
-            ws.send(JSON.stringify(userVotes)) //send只能send字符串或Buffer
+            const userId = ws.userId
+            if (vote.anonymous && userId !== vote.userId) { //匿名且非创建者，返回只能看到自己的数据
+                let cloned = _.cloneDeep(userVotes)
+                cloned.forEach(opration => {
+                    if (opration.userId !== userId) {
+                        opration.userId = null
+                        opration.name = null
+                        opration.avatar = null
+                    }
+                })
+                ws.send(JSON.stringify(cloned))
+            } else {
+                ws.send(JSON.stringify(userVotes)) //原始send只能send字符串或Buffer.没集成到express上
+            }
+
         })
     }
 
-    res.status(200).json({
-        code: 0,
-        msg: '选好了！'
-    })
+
 
 })
 
 
 
 
-
 //防404
 app.use(function (req, res, next) {
-    res.end('ok')
+    // res.end('ok')
+    res.status(400).end('unknown request') //400服务器不理解请求语法
 })
 
 

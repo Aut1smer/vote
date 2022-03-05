@@ -49,7 +49,7 @@ export function useAxios(config, listenChanger = '') {
             if (res.data.code === -1) {
                 throw new Error('code -1, axios faild')
             }
-            setData(d => res.data)
+            setData(d => res.data) // {code, result}
             setError(null)
             setLoading(l => false)
         }).catch(err => {

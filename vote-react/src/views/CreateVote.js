@@ -3,20 +3,21 @@
 //提供创建投票的具体设置
 
 import axios from "axios";
-import { useCallback } from "react"
+import { useCallback, useMemo } from "react"
 // import { produce } from "immer"
 import { useImmer } from "use-immer"; //直接修改草稿
 import { useInput, useBooleanInput, forceLogin } from "../components/hooks";
 import { useNavigate, useSearchParams } from "react-router-dom";
-
+import dayjs from "dayjs";
 
 
 //限制传播  vx的分享功能，分享到一个群后，就不能分享到别的群了；走session
-function CreateVote({ useInfo }) {
+function CreateVote({ userInfo }) {
     const title = useInput('')
     const description = useInput('')
-    const date = new Date()
-    const dateTimeStr = date.toLocaleDateString().split('/').map(it => it.padStart(2, 0)).join('-') + 'T' + date.toLocaleTimeString().slice(0, -3)
+    // const date = new Date()
+    // const dateTimeStr = date.toLocaleDateString().split('/').map(it => it.padStart(2, 0)).join('-') + 'T' + date.toLocaleTimeString().slice(0, -3)
+    const dateTimeStr = useMemo(() => dayjs().format('YYYY-MM-DDTHH:mm'), [])
     const deadline = useInput(dateTimeStr)
     // const deadline = useInput();
     const anonymous = useBooleanInput(false)
@@ -80,8 +81,8 @@ function CreateVote({ useInfo }) {
                 {options.map((it, idx) => {
                     return (
                         <div key={idx}>
-                            <input tabIndex={idx} type="text" placeholder="选项" value={it} onChange={e => setOptionVal(idx, e.target.value)} />
-                            <button onClick={() => removeOption(idx)}>-</button>
+                            <input type="text" placeholder="选项" value={it} onChange={e => setOptionVal(idx, e.target.value)} />
+                            <button tabIndex={-1} onClick={() => removeOption(idx)}>-</button>
                         </div>
                     )
                 })}

@@ -1,4 +1,4 @@
-import { NavLink, Route, Routes, Outlet } from "react-router-dom"
+import { NavLink, Outlet } from "react-router-dom"
 // import CreateUI from "./CreateUI"
 // import MyVotes from "./MyVotes"
 export default function Main(props) {
