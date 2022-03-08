@@ -39,7 +39,7 @@ const wsServer = new WebSocketServer({ server }) //ws接管了server的upgrade�
 const querystring = require('querystring')
 const _ = require('lodash')
 // 投票id -> 响应该投票的存活的ws们
-const voteWsMap = {} // 2:[ws, ws, ws] 二号投票有三个连接需要更新
+const voteWsMap = {} // 2:[ws, ws, ws] 二号投票有三个连接需要更新，（2号频道有3个客户端正在连接）
 
 console.log('voteWsMap', voteWsMap);
 
@@ -83,7 +83,10 @@ wsServer.on('connection', (connectSocket, req) => { //连接建立
 
 
 //路由-------------------------------------------------
-
+app.use((req, res, next) => {
+    console.log(req.method, req.url, req.ip);
+    next()
+})
 
 app.use(cors({
     origin: true, //自动映射ACAO为请求发来的地址
@@ -92,15 +95,12 @@ app.use(cors({
     // optionsSuccessStatus: 200,
 })) //默认选项为允许跨域，还可以传一个配置项进去
 app.use(cookieParser(cookieSecret)) //cookie签名的密码
-app.use(express.static(__dirname + '/static')) //静态文件中间件
+app.use(express.static(__dirname + '/build'))  //静态文件中间件，前端页面
 app.use('/uploads', express.static(__dirname + '/uploads')) //用于响应用户上传的头像请求
 app.use(express.json()) //解析json请求体的中间件， axios的json会序列化后被改中间件解掉
 app.use(express.urlencoded({ extended: true })) //解析url编码请求体的中间件，中间的extended不加的话会报警告
 
-app.use((req, res, next) => {
-    console.log(req.method, req.url, req.ip);
-    next()
-})
+
 
 //跟据cookie查询用户登录状态 req.loginUser上存储请求用户 req.isLogin存储是否登录
 app.use((req, res, next) => {
