@@ -97,14 +97,6 @@ app.use(express.urlencoded({ extended: true })) //解析url编码请求体的中
 
 //跟据cookie查询用户登录状态 req.loginUser上存储请求用户 req.isLogin存储是否登录
 app.use((req, res, next) => {
-    //★检测同源站，避免csrf攻击
-    if (!req.headers.referer.startsWith('https://vote.nekoda.cn')) {
-        res.status(400).json({
-            code: -1,
-            msg: 'please dont attack me'
-        })
-        return
-    }
     if (req.signedCookies.loginUser) { //cookie上带loginUser=2131 req.cookies读的是没加密的
         req.loginUser = db.prepare('select * from users where userId = ? and deprecated = ?')
             .get(Number(req.signedCookies.loginUser), 2) //登录态
