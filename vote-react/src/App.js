@@ -1,6 +1,6 @@
 import './App.css';
 import { Routes, Route, BrowserRouter } from 'react-router-dom'
-import { createContext, useCallback, useState } from 'react';
+import { createContext, useState } from 'react';
 import Login from './views/Login'
 import Register from './views/Register'
 import Main from './views/Main'
