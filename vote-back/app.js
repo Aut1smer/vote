@@ -6,7 +6,7 @@ const app = express()
 // https://www.npmjs.com/package/cors
 const cors = require('cors')
 
-
+const fs = require('fs')
 
 
 //账户系统
@@ -18,16 +18,21 @@ const cookieSecret = 'cookie sign secret' //密钥
 //数据库
 const db = require('./db')
 
-//集成ws,基于http服务器的upgrade事件升级为ws连接
+//服务器  集成ws,基于http服务器的upgrade事件升级为ws连接
 const { WebSocketServer } = require('ws') //也可以直接读出来
 const http = require('http')
+const https = require('https')
 // const { cookie } = require('express/lib/response')
-const server = http.createServer() //创建http服务器，把应用传入请求事件；为ws服务器提供基本层
-const wsServer = new WebSocketServer({ server }) //ws接管了server的upgrade事件
+const httpServer = http.createServer() //创建http服务器，把应用传入请求事件；为ws服务器提供基本层
+const httpsServer = https.createServer({
+    key: fs.readFileSync('/root/.acme.sh/vote.nekoda.cn/vote.nekoda.cn.key'),
+    cert: fs.readFileSync('/root/.acme.sh/vote.nekoda.cn/vote.nekoda.cn.cer')
+})
+const wsServer = new WebSocketServer({ server: httpsServer }) //ws接管了server的upgrade事件
 const querystring = require('querystring')
 const _ = require('lodash')
 // 投票id -> 响应该投票的存活的ws们
-const voteWsMap = {} // 2:[ws, ws, ws] 二号投票有三个连接需要更新，（2号频道有3个客户端正在连接）
+const voteWsMap = {} // voteId2:[ws, ws, ws] 二号投票有三个连接需要更新，（2号频道有3个客户端正在连接）
 
 console.log('voteWsMap', voteWsMap);
 
@@ -82,7 +87,7 @@ app.use(cors({
     // optionsSuccessStatus: 200,
 })) //默认选项为允许跨域，还可以传一个配置项进去
 app.use(cookieParser(cookieSecret)) //cookie签名的密码
-// app.use(express.static(__dirname + '/build'))  //静态文件中间件，前端页面
+app.use(express.static(__dirname + '/build'))  //静态文件中间件，前端页面
 app.use('/uploads', express.static(__dirname + '/uploads')) //用于响应用户希望拿到的头像请求
 app.use(express.json()) //解析json请求体的中间件， axios的json会序列化后被改中间件解掉
 // content-type: application/x-www-form-urlencoded
@@ -93,6 +98,13 @@ app.use(express.urlencoded({ extended: true })) //解析url编码请求体的中
 //跟据cookie查询用户登录状态 req.loginUser上存储请求用户 req.isLogin存储是否登录
 app.use((req, res, next) => {
     //★检测同源站，避免csrf攻击
+    if (!req.headers.referer.startsWith('https://vote.nekoda.cn')) {
+        res.status(400).json({
+            code: -1,
+            msg: 'please dont attack me'
+        })
+        return
+    }
     if (req.signedCookies.loginUser) { //cookie上带loginUser=2131 req.cookies读的是没加密的
         req.loginUser = db.prepare('select * from users where userId = ? and deprecated = ?')
             .get(Number(req.signedCookies.loginUser), 2) //登录态
@@ -176,7 +188,7 @@ app.post('/vote', (req, res, next) => {
 
 //拿到当前票版voteId的具体信息，如果是匿名投票则只发与登录态用户有关的信息
 app.get('/vote/:voteId', (req, res, next) => {
-    if (!req.isLogin) {
+    if (!req.isLogin) { //任何人只要在登录态下即可请求到面板
         res.status(401).json({
             code: -1,
             msg: 'not login'
@@ -200,7 +212,7 @@ app.get('/vote/:voteId', (req, res, next) => {
     // console.log('voteSetting:', voteSetting);
     // console.log('optionsText:', options);
 
-    //拿到该票版对应的投票选项、投票人的id、用户名、头像
+    //联表拿到该票版对应的投票选项、投票人的id、用户名、头像
     // const userVotes = db.prepare('select * from voteOptions where voteId = ?').all(voteId)
     const userVotes = db.prepare('SELECT optionId, avatar, voteOptions.userId, name FROM voteOptions JOIN users ON users.userId = voteOptions.userId WHERE voteId=?')
         .all(voteId)
@@ -217,6 +229,7 @@ app.get('/vote/:voteId', (req, res, next) => {
             }
         })
     }
+    // {voteId,userId,title,..,options[{optionId,content,voteId}],userVotes[{optionId,avatar,userId,name}]}
     res.status(200).json({
         code: 0,
         result: voteSetting
@@ -245,9 +258,8 @@ app.delete('/vote/:voteId', (req, res, next) => {
     }
     console.log('执行删除的vote数据', vote);
     //只删除了票版，*正常*不删。其他的查不出来可以放着了
-    db.prepare('delete from votes where voteId=? and userId=?').run(voteId, userId)
-    // db.prepare('DELETE FROM votes WHERE voteId = ? AND userId = ?').run(voteId, userId)
-    console.log('删除成功了');
+    db.prepare('delete from votes where voteId=? and userId=?').run(voteId, userId);
+    // console.log('删除成功了');
     res.status(200).json({
         code: 0,
         msg: 'delete vote ' + voteId + ' succeeded'
@@ -260,7 +272,7 @@ app.delete('/vote/:voteId', (req, res, next) => {
 
 
 
-// POST /vote/8   {optionIds:[21,43,5]}
+// POST /vote/8   请求体 {optionIds:[21,43,5]}
 //对 已登录用户 正在访问的 票版 的 选项(们) 进行 (匿名)投票
 //即切换当前登录用户对voteId的optionId的投票情况；如果匿名，不允许切换
 app.post('/vote/:voteId', (req, res, next) => {
@@ -303,14 +315,14 @@ app.post('/vote/:voteId', (req, res, next) => {
     const multi = vote.multiple == 1 ? true : false
     if (multi) { //多选：用户没投过则投上，用户投过取消
         if (vote.anonymous) { //匿名多选如果用户投过，不允许再投了
-            let userHasVoteOne = db.prepare('SELECT * FROM voteOptions WHERE userId=? AND voteId=?').get(userId, voteId)
+            let userHasVoteOne = db.prepare('SELECT * FROM voteOptions WHERE voteId=? AND userId=?').get(voteId, userId)
             if (userHasVoteOne) {
                 res.status(403).json({
                     code: -1,
                     msg: '匿名多选不允许重新投票'
                 })
                 return
-            } else { //匿名多选用户没投过，一次性投完
+            } else { //匿名多选用户没投过，投完
                 let insertVoteStmt = db.prepare('INSERT INTO voteOptions (userId, voteId, optionId) VALUES(?,?,?)')
                 optionIds.forEach(optionId => {
                     insertVoteStmt.run(userId, voteId, optionId)
@@ -321,7 +333,7 @@ app.post('/vote/:voteId', (req, res, next) => {
                 // })
             }
         } else {
-            //非匿名投票， 允许单点即改
+            //公开多选投票， 允许单点即改
             const voted = db.prepare('select * from voteOptions where userId = ? and voteId = ? and optionId = ?')
                 .get(userId, voteId, optionId)
             if (voted) { //投过，删除该行
@@ -340,14 +352,14 @@ app.post('/vote/:voteId', (req, res, next) => {
         const voted = db.prepare('select * from voteOptions where userId = ? and voteId = ?').get(userId, voteId)
 
         if (voted) { //投过就更新 用户 在 票版 的选项
-            if (vote.anonymous) {//匿名单选投过，不允许重投
+            if (vote.anonymous) {//【匿名单选投过，不允许重投】
                 res.status(403).json({
                     code: -1,
                     msg: '匿名投票无法修改已投结果！'
                 })
                 return
             } else {
-                //非匿名投过
+                //公开 投过
                 if (voted.optionId === optionId) { //单选两次相同选项
                     // 方案一：投过就是投过，不允许取消
                     res.status(200).json({
@@ -359,11 +371,11 @@ app.post('/vote/:voteId', (req, res, next) => {
                     return
                     // 方案二：允许取消
                     // db.prepare('delete from voteOptions where voteOptionId = ?').run(voted.voteOptionId)
-                } else { //更改用户选项
+                } else { //公开两次选项不同
                     db.prepare('update voteOptions set optionId = ? where voteOptionId = ?').run(optionId, voted.voteOptionId)
                 }
             }
-        } else { //匿名非匿名没投过，新增
+        } else { //匿名/公开没投过，新增
             db.prepare('insert into voteOptions (userId, voteId, optionId) values(?,?,?)')
                 .run(userId, voteId, optionId)
         }
@@ -381,7 +393,6 @@ app.post('/vote/:voteId', (req, res, next) => {
                                     ON users.userId = voteOptions.userId 
                                     WHERE voteId=?`).all(voteId)
 
-
         voteWsMap[voteId].forEach(ws => {
             const userId = ws.userId
             if (vote.anonymous && userId !== vote.userId) { //匿名且非创建者，返回只能看到自己的数据
@@ -397,7 +408,6 @@ app.post('/vote/:voteId', (req, res, next) => {
             } else {
                 ws.send(JSON.stringify(userVotes)) //原始send只能send字符串或Buffer.没集成到express上
             }
-
         })
     }
 
@@ -415,20 +425,31 @@ app.use(function (req, res, next) {
 })
 
 
-//测试——-----------------------------------------------------
+//启动服务器监听——-----------------------------------------------------
 
-
-
-const port = 8081
 // app.listen(port, () => { //这里是app内部创建了个http服务器，提供服务，但是它不返回http服务器所以没办法升级协议
 //     console.log('vote back listening on port ', port);
 // })
 
-//将express创建的app绑定到http server的request事件上
-server.on('request', app)
-server.listen(port, () => {
-    console.log('vote back listening on port ', port);
+
+const httpPort = 80
+const httpsPort = 443
+
+//中转服务到https
+const redirectApp = express()
+redirectApp.use((req, res, next) => {
+    res.redirect(304, 'https://vote.nekoda.cn/')
+})
+
+httpServer.on('request', redirectApp)
+httpServer.listen(httpPort, () => {
+    console.log('vote back listening on httpPort ', httpPort);
 })
 
 
+//将express创建的app绑定到https server的request事件上
+httpsServer.on('request', app)
+httpsServer.listen(httpsPort, () => {
+    console.log('vote back listening on httpsPort ', httpsPort);
+})
 

@@ -1,4 +1,4 @@
-import { NavLink, Outlet, Link } from "react-router-dom"
+import { Outlet, Link } from "react-router-dom"
 import { Menu } from "antd"
 import './Main.css'
 
@@ -6,7 +6,7 @@ import './Main.css'
 // import MyVotes from "./MyVotes"
 import { CurMenu } from "../App"
 import { useCallback, useContext, useState } from "react"
-export default function Main(props) {
+export default function Main() {
     //选中Menu的 新建 || 我的，保存状态
     const { selected, updateCurMenuData } = useContext(CurMenu)
     console.log(CurMenu, useContext(CurMenu));
@@ -18,7 +18,7 @@ export default function Main(props) {
     }, [])
     return (
         <div className="main">
-            {/* CreateUI  Myvotes here */}
+            {/* CreateUI or Myvotes here */}
             <Outlet />
             <nav>
                 <Menu theme="light" mode="horizontal" selectedKeys={selected}

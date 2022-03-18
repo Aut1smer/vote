@@ -33,7 +33,7 @@ export default function ForgetPSWD() {
             icon: <SmileOutlined style={{ color: '#108ee9' }} />
         })
 
-        axios.post('http://localhost:8081/account/forget-password', { email: email }).then(res => {
+        axios.post('https://vote.nekoda.cn:443/account/forget-password', { email: email }).then(res => {
             setSeeMail(s => true)
             let id = setInterval(() => {
                 setSecondCount(c => c - 1)

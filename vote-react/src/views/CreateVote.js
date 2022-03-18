@@ -8,22 +8,21 @@ import { useCallback, useMemo } from "react"
 import { useImmer } from "use-immer"; //相当于useState直接修改草稿
 import { useInput, useBooleanInput, forceLogin } from "../components/hooks";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Input, Button, Switch, DatePicker, BackTop } from "antd";
+import { Input, Button, Switch, BackTop } from "antd";
 import { CloseOutlined, CheckOutlined, ArrowLeftOutlined } from '@ant-design/icons'
 import dayjs from "dayjs";
 import './CreateVote.css'
 
 //限制传播  vx的分享功能，分享到一个群后，就不能分享到别的群了；走session
-function CreateVote({ userInfo }) {
+function CreateVote() {
     const title = useInput('')
     const description = useInput('')
     // const date = new Date()
     // const dateTimeStr = date.toLocaleDateString().split('/').map(it => it.padStart(2, 0)).join('-') + 'T' + date.toLocaleTimeString().slice(0, -3)
     const dateTimeStr = useMemo(() => dayjs().add(30, 'minute').format('YYYY-MM-DDTHH:mm'), [])
     const deadline = useInput(dateTimeStr)
-    // const deadline = useInput();
     const anonymous = useBooleanInput(false)
-    const [options, setOptions] = useImmer(['', '']);
+    const [options, setOptions] = useImmer(['', '']); //
     const removeOption = useCallback(function removeOption(key) {
         setOptions(draft => {
             draft.splice(key, 1)
@@ -54,7 +53,7 @@ function CreateVote({ userInfo }) {
             return
         }
         try {
-            const response = await axios.post('/vote', vote)
+            const response = await axios.post('https://vote.nekoda.cn:443/vote', vote)
             const result = response.data.result  //创建好的投票信息 {...创建者, 投票ID}
             console.log('返回的响应信息', result);
             navigate(`/view-vote/${result.voteId}`) //跳转投票页面

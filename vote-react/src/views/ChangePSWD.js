@@ -8,6 +8,7 @@ import { EyeTwoTone, EyeInvisibleOutlined } from '@ant-design/icons'
 import { useInput } from "../components/hooks"
 import './ChangePSWD.css'
 
+//前端路由  /change-password?email=xxx
 //邮件通过验证，激活修改密码区块
 export default function ChangePSWD() {
     const [searchParams, setSearchParams] = useSearchParams()
@@ -42,7 +43,7 @@ export default function ChangePSWD() {
         delivery.email = searchParams.get('email')
         delivery.password = ps1.value
         //★请稍后，修改完密码后将跳至首页
-        axios.post('http://localhost:8081/account/change-password', delivery, {
+        axios.post('https://vote.nekoda.cn:443/account/change-password', delivery, {
             withCredentials: true
         }).then((res) => {
             //修改成功，返回首页

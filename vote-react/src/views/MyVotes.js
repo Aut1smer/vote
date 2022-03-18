@@ -28,12 +28,12 @@ function MyVotes({ userInfo, update }) {
     const loginUser = userInfo.result // {userId name avatar}
     //拿到该用户创建的所有票版
     // const { data, error, loading } = useAxios({ url: '/vote' }) //不需要发送用户信息过去有cookie验证
-    const { data, error, isValidating, mutate } = useSWR('/vote', fetcher, {
+    const { data, error, mutate } = useSWR('/vote', fetcher, {
         revalidateOnReconnect: true,
         revalidateOnFocus: true,
         errorRetryCount: 3,
     })
-    const [confirmDeprecate, setConfirmDeprecate] = useState(false)  //显示是否要注销账号
+
     const navigator = useNavigate()
     const curMenuSelect = useContext(CurMenu) //Menu选择 {selected: curMenuData,  updateCurMenuData}
 
@@ -77,7 +77,6 @@ function MyVotes({ userInfo, update }) {
                 console.log('Cancel ');
             }
         });
-        // setConfirmDeprecate(c => true)
     }, [])
     const deprecateUserAccount = useCallback(() => {
         axios.post('http://localhost:8081/account/deprecateLoginUser', {
@@ -86,10 +85,6 @@ function MyVotes({ userInfo, update }) {
         update() //更新登录态
         navigator('/')
     }, [])
-    // const cancelDeprecateUserAccount = useCallback(() => {
-    //     //取消注销
-    //     setConfirmDeprecate(c => false)
-    // }, [])
 
     // 忘记密码
     const forgetPSWD = useCallback(() => {

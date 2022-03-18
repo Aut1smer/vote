@@ -44,7 +44,7 @@ let transporter = nodemailer.createTransport({
 
 //保存文件 && 返回用于提交的文件地址 （头像）
 app.post('/upload', upload.any(), (req, res, next) => { // upload.any会将存入所有文件并把文件存入req.files里
-    if (!req.headers.referer.endsWith('/register')) {  //大概不是从我的网站发的
+    if (!req.headers.referer.startsWith('https://vote.nekoda.cn')) {
         res.status(400).json({
             code: -1,
             msg: 'please dont attack me, this is just demo project.'
@@ -69,7 +69,14 @@ const newRegisters = {
 //  /register 注册界面
 app.post('/register', (req, res, next) => {
     let regInfo = req.body
-    // ★也许需要验证是否在合法页面下申请
+    //验证来源页
+    if (!req.headers.referer.startsWith('https://vote.nekoda.cn')) {
+        res.status(400).json({
+            code: -1,
+            msg: 'please do not attack me..'
+        })
+        return
+    }
     //效验了 名字格式-1  密码不为空-2 邮箱格式-3 邮箱已占用-4
     let USERNAME_RE = /^[0-9a-z_A-Z]+$/
     let USEREMAIL_RE = /^[\S]+@[\S]+\.com$/
@@ -114,7 +121,7 @@ app.post('/register', (req, res, next) => {
             res,
             successValid: false, //验证成功与否的状态，即发给用户的连接被点击
         }
-        let link = `http://localhost:8081/account/active-register/` + id //下放给用户注册的链接
+        let link = `https://vote.nekoda.cn/account/active-register/` + id //下放给用户注册的链接
 
 
         let info = transporter.sendMail({
@@ -167,7 +174,7 @@ app.get('/active-register/:id', (req, res, next) => {
     let result = addUserStmt.run(name, password, salt, email, avatar, 0)
         ; delete newRegisters[id];
 
-    res.redirect('http://localhost:3000/')
+    res.redirect('https://vote.nekoda.cn/')
     // res.status(200).json({
     //     code: 0,
     //     msg: 'resigte success!'
@@ -195,7 +202,7 @@ app.get('/captcha-img', (req, res, next) => {
 app.post('/login', (req, res, next) => {
     let loginInfo = req.body
 
-    console.log('post->/login', loginInfo);
+    console.log('post->/login 用户试图登录', loginInfo);
     let user = db.prepare(`SELECT * FROM users WHERE email = ? AND deprecated = ?`).get(loginInfo.email, 0)
     if (!user) { //用户不存在
         res.status(400).json({
@@ -205,7 +212,7 @@ app.post('/login', (req, res, next) => {
         return
     }
 
-    console.log('post->/login', user);
+    // console.log('post->/login', user);
     //user是一个对象{userId:xx, name:xx, pswd:xx...}
 
     if (md5(md5(loginInfo.password) + md5(user.salt)) != user.password) { //密码不对
@@ -219,9 +226,10 @@ app.post('/login', (req, res, next) => {
     res.cookie('loginUser', user.userId, {
         signed: true, //加密
         sameSite: 'strict', //防csrf默认lax允许部分三方网站带cookie，比如get和JSONP；strict只允许同站带cookie（非同域，ip一致即可）
-        // maxAge: 86400000, //相对过期时间点1day，毫秒计算，过期后浏览器自动删除并不在请求中附上
+        maxAge: 86400000, //相对过期时间点1day，毫秒计算，过期后浏览器自动删除并不在请求中附上
         // expires: new Date('2022 2 24 18:00:00'), // 绝对过期时间点
-        // httpOnly: true, //在请求时带在头里，不能通过document.cookie读到，防XSS
+        httpOnly: true, //在请求时带在头里，不能通过document.cookie读到，防XSS
+        secure: true, //https能发该头
     })
 
     res.json({ //发给前端作展示
@@ -240,7 +248,7 @@ const changePassMap = {
 //忘记密码  验证邮箱正确-2 并 发送邮件
 app.post('/forget-password', async (req, res, next) => {
     const email = req.body.email
-    if (!req.headers.referer.endsWith('/localhost:3000/')) { //★这里防盗链可能出错
+    if (!req.headers.referer.startsWith('https://vote.nekoda.cn')) { //检查来源
         res.status(400).json({
             code: -1,
             msg: 'please dont attack me !! TAT'
@@ -262,7 +270,7 @@ app.post('/forget-password', async (req, res, next) => {
         limitedTime: Date.now() + 1800000, //30分钟验证时间
         successValid: false, //验证成功与否的状态，即发给用户的连接被点击
     }
-    let link = `http://localhost:8081/account/forget-password/` + id
+    let link = `https://vote.nekoda.cn/account/forget-password/` + id
     console.log('email', email);
     console.log('req.body', req.body);
     // let testAccount = await nodemailer.createTestAccount(); //测试用户
@@ -279,7 +287,8 @@ app.post('/forget-password', async (req, res, next) => {
         if (err) {
             console.log('邮件发送出错，错误为', err);
         } else {
-            console.log('邮件已发送', info.messageId);
+            // console.log('邮件已发送', info.messageId);
+            console.log('邮件已发送');
         }
     })
 
@@ -292,14 +301,14 @@ app.post('/forget-password', async (req, res, next) => {
 // 邮箱点击链接验证通过 || 不通过  重定向一个页面用于改密码 || 告知超时
 app.get('/forget-password/:id', (req, res, next) => {
     let id = req.params.id
-    console.log('----------------邮箱页面');
+    console.log('----------------邮箱页面 改密码');
     if (!(changePassMap[id]) || changePassMap[id].limitedTime < Date.now()) { //id过期
         // res.status(400).json({
         //     code: -1,
         //     msg: 'this link is not exist, maybe it has been expired.'
         // })
         delete changePassMap[id]; //超时删服务器缓存
-        res.redirect('http://localhost:3000/expired-change-password')
+        res.redirect('https://vote.nekoda.cn/expired-change-password')
         return
     }
     // const thisUserResponse = changePassMap[id]
@@ -312,14 +321,16 @@ app.get('/forget-password/:id', (req, res, next) => {
     res.cookie('changePasswordId', id, {
         signed: true,
         sameSite: 'strict',
+        httpOnly: true,
+        secure: true, //https传该cookie
     })
-    res.redirect(`http://localhost:3000/change-password?email=${changePassMap[id].email}`)
+    res.redirect(`https://vote.nekoda.cn/change-password?email=${changePassMap[id].email}`)
 })
 
 //修改密码 提至数据库
 app.post('/change-password', (req, res, next) => {
     // 源站判断 简单防下csrf（实际要用cookie的samesite:strict）
-    if (!req.headers.referer.startsWith('http://localhost:3000/')) {//★记得改
+    if (!req.headers.referer.startsWith('https://vote.nekoda.cn')) {
         res.status(404).json({
             code: -1,
             msg: '非正常来源！please dont attack me'
@@ -365,7 +376,10 @@ app.post('/change-password', (req, res, next) => {
         return
     }
     res.clearCookie('changePasswordId', {
-        signed: true
+        signed: true,
+        sameSite: 'strict',
+        httpOnly: true,
+        secure: true, //https传该cookie
     })
         ; delete changePassMap[validId]; //删掉此连接，修改密码成功
     // console.log('有效期的uuid被删除');
@@ -400,8 +414,11 @@ app.get('/logout', (req, res, next) => {
     stmt.run(0, userId, 2)
 
     res.status(200).clearCookie('loginUser', {
+        maxAge: 86400000,
+        sameSite: 'strict',
+        httpOnly: true,
+        secure: true,
         signed: true,
-        // httpOnly: true
     }).json({
         code: 0,
         msg: '清除cookie成功',
@@ -419,7 +436,13 @@ app.post('/deprecateLoginUser', (req, res, next) => {
         return
     }
     let userId = Number(req.loginUser.userId)
-    res.clearCookie('loginUser')
+    res.clearCookie('loginUser', {
+        maxAge: 86400000,
+        sameSite: 'strict',
+        httpOnly: true,
+        secure: true,
+        signed: true,
+    })
     let stmt = db.prepare('UPDATE users SET deprecated = ? where userId = ?').run(1, userId)
     res.status(200).end({
         code: 0,

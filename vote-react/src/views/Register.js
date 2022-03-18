@@ -12,10 +12,10 @@ import './Register.css'
 import { CurMenu } from "../App"
 //注册界面
 
-export default function Register(props) {
+export default function Register() {
     //拿验证码
     const captchaResult = useAxios({
-        url: '/account/captcha-img',
+        url: 'https://vote.nekoda.cn/account/captcha-img',
     })
     const captchaRef = useRef(captchaResult)
     captchaRef.current = captchaResult
@@ -71,7 +71,7 @@ export default function Register(props) {
         fileFB.style.display = 'none'
         let formData = new FormData()
         formData.append('file', file)
-        axios.post('/account/upload', formData).then((res) => {
+        axios.post('https://vote.nekoda.cn/account/upload', formData).then((res) => {
             if (res.status == 200) {
                 let avt = document.querySelector('#avatar')
                 avt.value = res.data.result[0]
@@ -135,7 +135,7 @@ export default function Register(props) {
         delivery.password = inputs[2].value;
         delivery.avatar = inputs[4].value
 
-        axios.post('/account/register', delivery).then(res => {
+        axios.post('https://vote.nekoda.cn/account/register', delivery).then(res => {
             // 1.返回登录页  2.等待验证邮箱，返回验证界面，验证完毕则回到登录页
             //
             notification.info({

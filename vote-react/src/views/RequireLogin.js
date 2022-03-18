@@ -4,7 +4,7 @@ import { Result, Button } from "antd"
 import { useCallback, useContext } from "react"
 import { CurMenu } from "../App"
 //跳转需要登录
-export default function RequireLogin(props) {
+export default function RequireLogin() {
     const navigate = useNavigate()
     const curMenu = useContext(CurMenu)
     const goLogin = useCallback(() => {

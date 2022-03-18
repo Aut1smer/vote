@@ -29,7 +29,7 @@ function ViewVote({ userInfo: userData }) { //高阶传来的userInfo
     const { voteId } = useParams()
     // const { data: userData, loading: userLoading, error: userError } = useUser() //拿到登录用户个人信息
     const { data, loading, error } = useAxios({ //自封装useAxios，发送请求解得票版数据，会被ws来的新数据给冲下去
-        url: '/vote/' + voteId,
+        url: 'https://vote.nekoda.cn/vote/' + voteId,
         method: 'GET'
     }, voteId)
     const [userVotes, setUserVotes] = useState() //记录从ws上获取的最新信息
@@ -63,12 +63,12 @@ function ViewVote({ userInfo: userData }) { //高阶传来的userInfo
     let vote = data?.result ?? {} // 首次请求的票版全部内容
     // console.log('vote', vote);
     let thisPageUserVotes = (userVotes ?? vote.userVotes) || [] //即vote.userVotes [{optionId, avatar, userId, name}]
-    console.log('thisPageUserVotes', thisPageUserVotes);
+    // console.log('thisPageUserVotes', thisPageUserVotes);
     let groupedVotes = useMemo(() => _.groupBy(thisPageUserVotes, 'optionId'), [thisPageUserVotes])//按optionId分组的投票人信息
     let uniqueUsers = useMemo(() => _.uniqBy(thisPageUserVotes, 'userId'), [thisPageUserVotes]) //得到去重后的所有投票人
     let totalUsers = uniqueUsers.length; //投票人数量
-    console.log('groupedVotes分组后的投票数据', groupedVotes);
-    console.log('totalUsers去重后的总投票人数:', totalUsers);
+    console.log('<ViewVote>下groupedVotes分组后的投票人数据', groupedVotes);
+    // console.log('totalUsers去重后的总投票人数:', totalUsers);
 
     //查验票版是否过期
     const hasExpired = useMemo(() => {
@@ -109,7 +109,7 @@ function ViewVote({ userInfo: userData }) { //高阶传来的userInfo
             }
         } else { //匿名：无论单选多选，发选中的项目给后端，按钮触发结束投票
             try {
-                await axios.post(`/vote/${voteId}`, {
+                await axios.post(`https://vote.nekoda.cn/vote/${voteId}`, {
                     optionIds: selectedOptionIds
                 })
             } catch (e) {
@@ -219,8 +219,9 @@ function ViewVote({ userInfo: userData }) { //高阶传来的userInfo
         </div>)
     }
     if (error instanceof Error) {
-        console.log('viewvote组件发生axios请求错误：', error);
-        throw error //★ 网络错误展示
+        console.log('<viewvote>组件发生axios请求错误：', error);
+        message.error('加载出错,请检查您的网络')
+        // throw error //★ 网络错误展示
     }
 
 

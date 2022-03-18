@@ -4,13 +4,13 @@ import axios from "axios"
 import { useEffect, useCallback, useRef, useContext } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useInput, useUser } from '../components/hooks'
-import { Button, Input } from "antd"
+import { Button, Input, message } from "antd"
 import { EyeInvisibleOutlined, EyeTwoTone, UserOutlined, ArrowLeftOutlined } from "@ant-design/icons"
 import './Login.css'
 import { CurMenu } from "../App"
 
 // 登录页面
-export default function Login(props) {
+export default function Login() {
     const userEmail = useInput()
     const password = useInput()
     const navigate = useNavigate()
@@ -39,7 +39,7 @@ export default function Login(props) {
         // }) //跨域请求后端API
 
         try {
-            let response = await axios.post('/account/login', info) //反向代理请求后端API，登录成功拿到cookie
+            let response = await axios.post('https://vote.nekoda.cn:443/account/login', info) //反向代理请求后端API，登录成功拿到cookie
             // let data = response.data //响应体反序列化的内容
             console.log('登录页面登录成功响应头', response);
             //这里记录用户当前的登录信息（在cookie里），如头像等
@@ -49,9 +49,11 @@ export default function Login(props) {
             // console.log(e.toJSON());
             // console.log(e.response.data); //响应对象挂有内容
             if (e.response) {
-                alert(e.response.data.msg) //  {code : -1, msg: 'xxx'} 没输对密码账号
+                message.error('请输入正确的账号密码')
+                console.log('Login组件登录出错', e.response.data) //  {code : -1, msg: 'xxx'} 没输对密码账号
             } else {
-                alert('you have net error, then axios failed request.')
+                // alert('you have net error, then axios failed request.')
+                message.error('当前网络不太好..')
             }
         }
     }, [])
