@@ -1,0 +1,102 @@
+
+.createVote{
+    min-height: 98vh;
+    padding: 0 5%;
+    display: flex;
+    flex-flow: column;
+    justify-content: space-evenly;
+}
+
+/* 投票header */
+.createVote header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.createVote>header> button {
+    padding-left: 25px;
+    padding-right: 25px;
+}
+
+.createVote> main {
+    flex: 1;
+    display: flex;
+    flex-flow:column nowrap;
+}
+
+.createVote> main > section:first-child {
+    flex: 1;
+}
+
+.createVote> main > section > div {
+    margin: 10px 0;
+}
+
+
+
+/* 选项 */
+.options > div {
+    margin: 2px 0;
+}
+
+.createVote .deleteOpt {
+    width: 100%;
+    height: 100%;
+    padding: 0 20px;
+    font-size: 14px;
+    line-height: 30px;
+    cursor: pointer;
+    background-color: #fff;
+    transition: .1s ease-out ;
+}
+.createVote .deleteOpt:hover{
+    background-color: #40A9FF;
+    /* background-color: #00A2D8; */
+}
+
+.createVote .deleteOpt:hover .anticon-close {
+    color: #fff;
+}
+
+.createVote .ant-input-group-addon {
+    padding: 0;
+}
+
+.createVote button {
+    border-radius: 20px;
+}
+
+.createVote .timeInput {
+    padding: 0 10px;
+    height: 32px;
+    line-height: 30px;
+    border-radius: 10px;
+    /* outline:skyblue; */
+    border-color: #0002;
+}
+.createVote .timeInput:focus {
+    /* font-weight: 700; */
+    outline-color: #1890FF;
+}
+
+/* 截止日期 匿名投票 */
+.createVote> main > section:last-child>div>span{
+    padding-right: 20px;
+}
+.createVote footer {
+    margin-bottom: 10px; 
+}
+.createVote footer > button{
+    margin-right: 40px;
+}
+
+/* 投票标题大一点 */
+.voteTitle{
+    font-size: 18px!important;
+    font-weight: 700;
+}
+
+.voteDescription {
+    color: #999!important;
+}

@@ -1,0 +1,45 @@
+.login {
+    display: flex;
+    flex-flow: column nowrap;
+    padding: 5%;
+    min-height: 98vh;
+}
+
+.login > header { 
+    display: flex;
+    justify-content: space-between;
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #0001;
+}
+
+.login >header> button {
+    padding-left: 25px;
+    padding-right: 25px;
+    border-radius: 10px;
+}
+
+
+.login > main {
+    flex: 1;
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: center;
+}
+
+.login > main > div {
+    width: 50%;
+    margin: 20px 0;
+    padding: 0 40px;
+}
+
+.login > main > div .ant-input-suffix {
+    padding-left: 2px;
+}
+
+.login > main > div:last-child {
+    width: 40%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}

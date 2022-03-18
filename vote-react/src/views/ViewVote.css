@@ -1,4 +1,110 @@
 
+/* spin */
+.viewVoteSpin {
+    min-height: 98vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+}
+
+
+/* 有数据了 */
+.viewVotes {
+    padding: 0 5%;
+    display: flex;
+    flex-flow: column nowrap;
+}
+
+/* 头部 账户系统 */
+.viewVotes > header {
+    border-bottom: 1px solid #0003;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 10px 0;
+}
+
+.viewVotes > header > div > button {
+    margin-left: 10px;
+}
+.viewVotes > header > div > button:last-child {
+    padding-left: 30px;
+    padding-right: 30px;
+    border-radius: 20px;
+}
+
+/* footer截止日期 */
+.viewVotes > footer {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #999;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* 列表 */
+
+.viewVotes > main {
+    flex: 1;
+}
+
+/* 列表头部 */
+.listheader {
+    display: flex;
+    flex-wrap: nowrap;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+}
+.listheader .voteTag span {
+    cursor: default;
+}
+.listheader section {
+    display: flex;
+    flex-flow: column nowrap;
+}
+.listheader section h2 {
+    flex: 1;
+}
+
+.listheader aside > button {
+    border-radius: 50%;
+    margin-left: 20px;
+}
+
+
+/* 列表项 */
+.listItem {
+    transition:.2s;
+    cursor: pointer;
+}
+.listItem:hover{
+    background-color: #eee;
+}
+.listItem > div:first-child {
+    display: flex;
+    justify-content: space-between;
+}
+.listItem > div:first-child span:first-child {
+    flex: 1;
+}
+.listItem > div:first-child aside span {
+    margin-left: 10px;
+}
+    
+.listItem > div:last-child {
+    height: 32px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.listItem .votedUsers span {
+    margin-right: 5px;
+    font-weight: 700;
+}
+
 .user-avatar {
     --size: 32px;
     width: var(--size);

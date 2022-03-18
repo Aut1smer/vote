@@ -1,0 +1,85 @@
+
+.register {
+    display: flex;
+    min-height: 98vh;
+    flex-flow: column nowrap;
+}
+
+.register header {
+    margin: 20px;
+}
+
+ .register > header { 
+    display: flex;
+    justify-content: space-between;
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #0001;
+}
+
+.register >header> button {
+    padding-left: 25px;
+    padding-right: 25px;
+    border-radius: 10px;
+}
+
+
+.register>main {
+    flex: 1;
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: center;
+}
+.register > main > section {
+    width: 50%;
+    padding: 10px;
+    border-bottom: 1px solid #0001;
+}
+
+.register>main > footer {
+    margin-top: 10px;
+    width: 50%; 
+}
+
+.register > main >footer > button {
+    margin-left: 20px;
+}
+
+/* √ */
+.register > main > section >div:first-child{
+    display: flex;
+    justify-content:space-between;
+    padding-right: 5px;
+}
+
+
+/* suffix */
+.register section .ant-input-suffix {
+    padding-left: 4px;
+}
+
+/* avatar */
+.register .avatar > div:last-of-type {
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+}
+
+.register .avatar > div:last-of-type button label {
+    cursor: pointer;
+}
+
+.register .avatar > div:last-of-type > span {
+    margin-left: 10px;
+    color: #1890FF;
+    cursor: pointer;
+}
+
+
+
+/* captcha */
+.register > main > section > .captcha {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}

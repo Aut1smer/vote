@@ -5,11 +5,13 @@
 import axios from "axios";
 import { useCallback, useMemo } from "react"
 // import { produce } from "immer"
-import { useImmer } from "use-immer"; //直接修改草稿
+import { useImmer } from "use-immer"; //相当于useState直接修改草稿
 import { useInput, useBooleanInput, forceLogin } from "../components/hooks";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { Input, Button, Switch, DatePicker, BackTop } from "antd";
+import { CloseOutlined, CheckOutlined, ArrowLeftOutlined } from '@ant-design/icons'
 import dayjs from "dayjs";
-
+import './CreateVote.css'
 
 //限制传播  vx的分享功能，分享到一个群后，就不能分享到别的群了；走session
 function CreateVote({ userInfo }) {
@@ -17,7 +19,7 @@ function CreateVote({ userInfo }) {
     const description = useInput('')
     // const date = new Date()
     // const dateTimeStr = date.toLocaleDateString().split('/').map(it => it.padStart(2, 0)).join('-') + 'T' + date.toLocaleTimeString().slice(0, -3)
-    const dateTimeStr = useMemo(() => dayjs().format('YYYY-MM-DDTHH:mm'), [])
+    const dateTimeStr = useMemo(() => dayjs().add(30, 'minute').format('YYYY-MM-DDTHH:mm'), [])
     const deadline = useInput(dateTimeStr)
     // const deadline = useInput();
     const anonymous = useBooleanInput(false)
@@ -36,6 +38,7 @@ function CreateVote({ userInfo }) {
 
     const navigate = useNavigate()
     const [searchParams, setSearchParams] = useSearchParams();
+    //生成投票并跳转到该页面
     const generateVote = async function (e) {
         const vote = {
             title: title.value,
@@ -62,6 +65,10 @@ function CreateVote({ userInfo }) {
             throw e
         }
     }
+    const backHome = useCallback(() => {
+        navigate('/')
+    }, [])
+
 
     // // 判断用户登录态
     // const { data: userData, loading: userLoading, error: userError } = useUser()
@@ -72,32 +79,49 @@ function CreateVote({ userInfo }) {
     //     return <RequireLogin />
     // }
     return (
-        <div>
-            <div>
-                <h1>创建投票</h1>
-                <div><input type="text" placeholder="投票标题" {...title} /></div>
-                <div><input type="text" placeholder="补充描述(选填)" {...description} /></div>
+        <div className="createVote">
+            <header>
+                <h1>创建{searchParams.get('multiple') == 1 ? '多选' : '单选'}投票</h1>
+                <Button type="primary" onClick={backHome}><ArrowLeftOutlined /></Button>
+            </header>
+            <main>
+                <section>
+                    <div><Input type="text" placeholder="投票标题" {...title} className="voteTitle" /></div>
+                    <div><Input type="text" placeholder="补充描述(选填)" {...description} className="voteDescription" /></div>
+                    <div className="options">
+                        {options.map((it, idx) => {
+                            return (
+                                <div key={idx}>
+                                    <Input type="text" addonAfter={<div className="deleteOpt" tabIndex={-1} onClick={() => removeOption(idx)}>
+                                        <CloseOutlined />
+                                    </div>}
+                                        placeholder="选项" value={it} onChange={e => setOptionVal(idx, e.target.value)} />
 
-                {options.map((it, idx) => {
-                    return (
-                        <div key={idx}>
-                            <input type="text" placeholder="选项" value={it} onChange={e => setOptionVal(idx, e.target.value)} />
-                            <button tabIndex={-1} onClick={() => removeOption(idx)}>-</button>
-                        </div>
-                    )
-                })}
-                {/* <div><input type="text" placeholder="选项" /><button>-</button></div> */}
+                                </div>
+                            )
+                        })}
+                    </div>
+                    {/* <div><input type="text" placeholder="选项" /><button>-</button></div> */}
 
 
-                <div><button onClick={() => setOptions(draft => { draft.push('') })}>添加选项</button></div>
-            </div>
-            <div>
-                <ul>
-                    <li><span>截止日期</span><input type="datetime-local" {...deadline} /></li>
-                    <li><span>匿名投票</span><input type="checkbox"  {...anonymous} /></li>
-                </ul>
-            </div>
-            <div><button onClick={generateVote}>完成</button></div>
+                    <div><Button onClick={() => setOptions(draft => { draft.push('') })}>添加选项</Button></div>
+                </section>
+                <section>
+                    <div>
+                        <span>截止日期</span>
+                        <input type="datetime-local" {...deadline} className="timeInput" />
+                    </div>
+                    <div>
+                        <span>匿名投票</span>
+                        <Switch size="big" checkedChildren={<CheckOutlined />} unCheckedChildren={<CloseOutlined />} {...anonymous} />
+                    </div>
+                </section>
+            </main>
+            <footer>
+                <Button onClick={() => { navigate('/') }}>取消</Button>
+                <Button type="primary" onClick={generateVote}>完成</Button>
+            </footer>
+            <BackTop />
         </div>
     )
 }

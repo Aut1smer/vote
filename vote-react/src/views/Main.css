@@ -1,0 +1,12 @@
+.main {
+    min-height: 98vh;
+    display: flex;
+    flex-flow: column;
+    justify-content: space-between;
+}
+.main > div {
+    flex: 1;
+}
+.main > nav {
+    display: flow-root;
+}

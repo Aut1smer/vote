@@ -1,0 +1,43 @@
+.changePSWD {
+    width: 80%;
+    min-height: 60vh;
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: center;
+    margin: auto;
+    padding-top: 20px;
+}
+
+.changePSWD header {
+    align-self: stretch;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #0003;
+}
+
+.changePSWD main {
+    flex: 1;
+    display: flex;
+    flex-flow: column nowrap;
+}
+
+.changePSWD main > section {
+    border-bottom: 1px solid #0001;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
+
+.changePSWD main > section > div {
+    display: flex;
+    justify-content: space-between;
+}
+
+
+/* footer */
+.changePSWD main > footer {
+    margin-top: 10px;
+}
+
+.changePSWD main > footer > button {
+    margin-right: 20px;
+}

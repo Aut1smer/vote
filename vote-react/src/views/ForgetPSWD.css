@@ -1,0 +1,34 @@
+
+.forgetPSWD{
+    margin: auto;
+    width: 80%;
+    min-height: 30vh;
+    padding-top: 20px;  
+}
+
+.forgetPSWD header {
+    border-bottom: 1px solid #0003;
+    margin-bottom: 20px;
+}
+.forgetPSWD main {
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: center;
+}
+
+.forgetPSWD main > div:first-child {
+    border-bottom: 1px solid #0001;
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+}
+
+.forgetPSWD main > div:first-child > div:first-child{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.forgetPSWD main > div:last-child button {
+    margin-right: 20px;
+}

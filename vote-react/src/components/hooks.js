@@ -37,15 +37,15 @@ export function useAxios(config, listenChanger = '') {
     const [error, setError] = useState() //存放错误
     const [shouldUpdate, setUpdate] = useState(0) //计数满足更新要求
 
-    // useEffect是浏览器渲染可视化完组件后执行，它是异步的不会阻塞渲染
-    // useLayoutEffect是浏览器即将渲染时执行，它是同步的与componentDidMount时机一致，会阻塞渲染，但也防止了首屏闪烁
+    // useEffect是浏览器渲染可视化完组件后执行，它是异步的不会阻塞渲染 dom加载后
+    // useLayoutEffect是浏览器即将渲染时执行，它是同步的与componentDidMount时机一致，会阻塞渲染，但也防止了首屏闪烁 dom加载前
     useEffect(() => {
         const controller = new AbortController()
         const req = axios({
             ...config,
             signal: controller.signal
         }).then(res => {
-            console.log('响应头', res);
+            console.log('useAxios响应对象', res);
             if (res.data.code === -1) {
                 throw new Error('code -1, axios faild')
             }
@@ -71,7 +71,7 @@ export function useAxios(config, listenChanger = '') {
 }
 
 
-// 拿到当前登录用户的业务hook,从context里拿即可，每个组件都不用再发送请求直接拿到数据即可
+// 当前登录用户的业务hook,从context里拿useAxios返回的东西即可，每个组件都不用再发送请求直接拿到数据即可
 export function useUser() {
     const user = useContext(UserContext)
     return user //请求出错 || 响应4xx 都会使user.error有值
@@ -84,15 +84,18 @@ export function useUser() {
 export function forceLogin(Comp) {
     function ForceLoginComp(props) {
         const userInfo = useUser()
-        if (userInfo.loading) {
-            return null
-        }
+        console.log('forceLogin下的', userInfo);
+
         if (userInfo.error) {
             //仅考虑了请求出错
             return <RequireLogin />
         }
-        return <Comp {...props} userInfo={userInfo.data} />
+        if (userInfo.loading) {
+            return null
+        }
+        return <Comp {...props} userInfo={userInfo.data} update={userInfo.update} />
     }
     ForceLoginComp.displayName = 'ForceLogin ' + (Comp.displayName ?? Comp.name)
     return ForceLoginComp
 }
+

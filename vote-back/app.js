@@ -7,18 +7,6 @@ const app = express()
 const cors = require('cors')
 
 
-//文件上传
-const path = require('path')
-const multer = require('multer')
-let storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, __dirname + '/uploads')
-    },
-    filename: function (req, file, cb) {
-        cb(null, Date.now() + '-' + Math.random().toString(16).slice(2) + path.extname(file.originalname))
-    }
-})
-const upload = multer({ storage: storage })
 
 
 //账户系统
@@ -49,13 +37,12 @@ wsServer.on('connection', (connectSocket, req) => { //连接建立
     // console.log('当前ws连接的登录用户为 ', req.headers.cookie); // ws服务器不是express的一部分，所以需要手动解析
     // https://www.npmjs.com/package/cookie-parser cookieParser主动解析加密cookie
     const parsedCookie = cookieParser.signedCookies(querystring.parse(req.headers.cookie, '; '), cookieSecret) //{loginUser: userId}
-    const userId = parsedCookie.loginUser
+    const userId = Number(parsedCookie.loginUser)
     if (!userId) {
         console.log('非法cookie登录,某ws连接即将断开');
         connectSocket.close()
         return
     }
-
     // const user = db.prepare('SELECT * FROM users WHERE userId = ?').get(userId)
     connectSocket.userId = userId //此处挂载连入的用户信息
     // req.url === '/realtime-voteinfo/7'
@@ -95,17 +82,20 @@ app.use(cors({
     // optionsSuccessStatus: 200,
 })) //默认选项为允许跨域，还可以传一个配置项进去
 app.use(cookieParser(cookieSecret)) //cookie签名的密码
-app.use(express.static(__dirname + '/build'))  //静态文件中间件，前端页面
-app.use('/uploads', express.static(__dirname + '/uploads')) //用于响应用户上传的头像请求
+// app.use(express.static(__dirname + '/build'))  //静态文件中间件，前端页面
+app.use('/uploads', express.static(__dirname + '/uploads')) //用于响应用户希望拿到的头像请求
 app.use(express.json()) //解析json请求体的中间件， axios的json会序列化后被改中间件解掉
-app.use(express.urlencoded({ extended: true })) //解析url编码请求体的中间件，中间的extended不加的话会报警告
+// content-type: application/x-www-form-urlencoded
+app.use(express.urlencoded({ extended: true })) //解析url编码请求体的中间件，中间的extended不加的话会报警告.解析的form到req.body上
 
 
 
 //跟据cookie查询用户登录状态 req.loginUser上存储请求用户 req.isLogin存储是否登录
 app.use((req, res, next) => {
+    //★检测同源站，避免csrf攻击
     if (req.signedCookies.loginUser) { //cookie上带loginUser=2131 req.cookies读的是没加密的
-        req.loginUser = db.prepare('select * from users where userId = ?').get(req.signedCookies.loginUser)
+        req.loginUser = db.prepare('select * from users where userId = ? and deprecated = ?')
+            .get(Number(req.signedCookies.loginUser), 2) //登录态
         if (req.loginUser) { //防CSRF，查不出来这个cookie用户，就不能算登录状态
             req.isLogin = true
         } else {
@@ -117,16 +107,10 @@ app.use((req, res, next) => {
     }
 
     next()
-})
+});
 
 
-//上传文件
-app.post('/upload', upload.any(), (req, res, next) => {
-    let files = req.files
-    // console.log(files);
-    let urls = files.map(file => `/uploads/${file.filename}`) //网站根目录的..文件
-    res.json(urls) // 返回一串地址
-})
+
 
 //账户系统
 app.use('/account', accountRouter) //请求以 /account/xxx 打头的地址，将会中转到account路由中
@@ -152,10 +136,10 @@ app.get('/vote', (req, res, next) => {
         })
         return
     }
-    const hisVotes = db.prepare('SELECT * FROM votes WHERE userId = ?').all(req.loginUser.userId)
+    const hisVotes = db.prepare('SELECT * FROM votes WHERE userId = ?').all(Number(req.loginUser.userId))
     res.status(200).json({
         code: 0,
-        result: hisVotes
+        result: hisVotes || []
     })
 })
 
@@ -163,11 +147,11 @@ app.get('/vote', (req, res, next) => {
 app.post('/vote', (req, res, next) => {
     const vote = req.body
     console.log('前端来创建投票的信息:', vote);
-    let userId = req.loginUser?.userId
+    let userId = req.loginUser?.userId == undefined ? undefined : Number(req.loginUser.userId)
     if (userId !== undefined) {
         let stmtVote = db.prepare(`INSERT INTO votes (title, description, deadline, anonymous, multiple, userId) VALUES(?,?,?,?,?,?)`)
         //记得转下，sqlite3不能存boolean值
-        let voteRestore = stmtVote.run(vote.title, vote.description, vote.deadline, vote.anonymous ? 1 : 0, vote.multiple ? 1 : 0, req.loginUser.userId)
+        let voteRestore = stmtVote.run(vote.title, vote.description, vote.deadline, vote.anonymous ? 1 : 0, vote.multiple ? 1 : 0, userId)
         // console.log('voteRestore(stmtVote.run): ', voteRestore);
         let voteId = voteRestore.lastInsertRowid //最后一个插入的id
         let stmtOption = db.prepare('insert into options (content, voteId) values(?,?)')
@@ -200,7 +184,7 @@ app.get('/vote/:voteId', (req, res, next) => {
         return
     }
     //返回数据库中的voteId对应的所有数据
-    let { voteId } = req.params // {xx:xx}
+    let voteId = Number(req.params.voteId) // {xx:xx}
     const voteSetting = db.prepare('SELECT * FROM votes WHERE voteId = ?').get(voteId)
     //判断票版是否合法（存在）
     if (voteSetting === undefined) {
@@ -216,14 +200,14 @@ app.get('/vote/:voteId', (req, res, next) => {
     // console.log('voteSetting:', voteSetting);
     // console.log('optionsText:', options);
 
-    //拿到该票版对应的投票选项、投票人、投票人的头像
+    //拿到该票版对应的投票选项、投票人的id、用户名、头像
     // const userVotes = db.prepare('select * from voteOptions where voteId = ?').all(voteId)
-    const userVotes = db.prepare('SELECT optionId, avatar,voteOptions.userId, name FROM voteOptions JOIN users ON users.userId = voteOptions.userId WHERE voteId=?')
+    const userVotes = db.prepare('SELECT optionId, avatar, voteOptions.userId, name FROM voteOptions JOIN users ON users.userId = voteOptions.userId WHERE voteId=?')
         .all(voteId)
     voteSetting.userVotes = userVotes
 
     //如果是匿名投票，应该把非用户本人的 userId avatar 删掉，除非他是创建者
-    const userId = req?.loginUser?.userId
+    const userId = req?.loginUser?.userId === undefined ? undefined : Number(req.loginUser.userId)
     if (voteSetting.anonymous && userId != voteSetting.userId) {
         userVotes.forEach(it => {
             if (it.userId !== userId) {
@@ -248,8 +232,9 @@ app.delete('/vote/:voteId', (req, res, next) => {
         })
         return
     }
-    const { voteId } = req.params
-    const userId = req.loginUser.userId
+    const voteId = Number(req.params.voteId)
+    const userId = Number(req.loginUser.userId)
+    console.log('执行删除的userId：', userId);
     const vote = db.prepare('SELECT * FROM votes WHERE voteId = ? AND userId = ?').get(voteId, userId)
     if (!vote) {
         res.status(404).json({
@@ -258,8 +243,11 @@ app.delete('/vote/:voteId', (req, res, next) => {
         })
         return
     }
+    console.log('执行删除的vote数据', vote);
     //只删除了票版，*正常*不删。其他的查不出来可以放着了
-    db.prepare('DELETE FROM votes WHERE voteId = ?').run(voteId)
+    db.prepare('delete from votes where voteId=? and userId=?').run(voteId, userId)
+    // db.prepare('DELETE FROM votes WHERE voteId = ? AND userId = ?').run(voteId, userId)
+    console.log('删除成功了');
     res.status(200).json({
         code: 0,
         msg: 'delete vote ' + voteId + ' succeeded'
@@ -276,7 +264,7 @@ app.delete('/vote/:voteId', (req, res, next) => {
 //对 已登录用户 正在访问的 票版 的 选项(们) 进行 (匿名)投票
 //即切换当前登录用户对voteId的optionId的投票情况；如果匿名，不允许切换
 app.post('/vote/:voteId', (req, res, next) => {
-    const { voteId } = req.params
+    const voteId = Number(req.params.voteId)
     const { optionIds } = req.body
     if (optionIds.length === 0) { //post请求体没有 已选择的数据
         res.status(400).json({
@@ -286,7 +274,7 @@ app.post('/vote/:voteId', (req, res, next) => {
     }
     const optionId = optionIds[0] //单选只有一个id，就算发来多个也只用一个
     // console.log(req.params);
-    const userId = req.loginUser?.userId
+    const userId = req.loginUser?.userId == undefined ? undefined : Number(req.loginUser.userId)
     // console.log(req.loginUser);
     if (!userId) { //用户未登录
         res.status(401).json({

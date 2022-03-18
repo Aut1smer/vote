@@ -1,0 +1,57 @@
+
+.myVotes {
+    display: flex;
+    flex-flow: column nowrap;   
+}
+
+.myVotes>header {
+    display: flex;
+    align-items: center;
+    box-sizing: content-box;
+    padding-right: 5%;
+    /* margin: 20px 0; */
+    margin-bottom: 20px;
+    padding-top: 20px;
+    /* background-color: #0003; */
+    height: 40px;
+    line-height: 40px;    
+    border-top: 1px solid #0003;
+    border-bottom: 1px solid #0003;
+}
+
+.myVotes>header>div:last-child {
+    font-size: 0;
+}
+
+.myVotes>main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 0 5px;
+}
+
+.myVotes>main > div:first-child {
+    flex: 1;
+}
+
+.myVotes>main>div:last-child {    
+    text-align: center;
+}
+
+/* hover头像弹出popover */
+.popover {
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: space-evenly;
+    align-items: center;
+}
+.popover > div {
+    padding: 5px 0;
+    color: #1890FF;
+    border-bottom: 1px solid #0001;
+    cursor: pointer;
+}
+
+.popover > div:last-child {
+    border-bottom: none;
+}
