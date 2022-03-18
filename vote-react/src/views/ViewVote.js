@@ -274,7 +274,7 @@ function ViewVote({ userInfo: userData }) { //高阶传来的userInfo
                                 {
                                     thisOptionVoted.map((oneVote, idx) => (
                                         showAvatar ? <img key={idx} style={{ width: 32, height: 32 }} className='user-avatar' title={oneVote.name || ''}
-                                            src={oneVote.avatar ? `http://localhost:8081${oneVote.avatar}` : 'http://localhost:8081/uploads/default.jpg'} />
+                                            src={oneVote.avatar ? `https://vote.nekoda.cn${oneVote.avatar}` : 'http://vote.nekoda.cn/uploads/default.jpg'} />
                                             : <span> {oneVote.name ?? '匿名'} </span>
                                     ))
                                 }
